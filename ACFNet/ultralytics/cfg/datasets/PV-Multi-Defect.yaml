@@ -1,0 +1,13 @@
+
+path: /home/chenkaikai/PythonProjects/YOLOv8v10v11_Demov10/datasets/PV-Multi-Defect-YOLO/  # 注意这里是你的数据集根目录
+
+train: images/train  # 训练集图片路径，相对path
+val: images/val      # 验证集图片路径，相对path
+test: images/test    # 测试集图片路径，相对path
+
+names:
+  0: broken
+  1: hot_spot
+  2: black_border
+  3: scratch
+  4: no_electricity
