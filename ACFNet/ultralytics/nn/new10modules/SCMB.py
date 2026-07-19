@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-__all__ = ['BSU', 'C3k2_BSC']
+__all__ = ['SCMB', 'C3k2_SCMB']
 
 # --- 基础工具 ---
 def autopad(k, p=None, d=1):
@@ -23,21 +23,21 @@ class Conv(nn.Module):
     def forward(self, x):
         return self.act(self.bn(self.conv(x)))
 
-# --- 核心组件 SSU (原 SRU) ---
-class SSU(nn.Module):
+# --- 核心组件 SMU ---
+class SMU(nn.Module):
     def __init__(self, oup_channels: int, group_num: int = 16, gate_treshold: float = 0.5):
         super().__init__()
         gn_groups = group_num if oup_channels % group_num == 0 else 1
         self.gn = nn.GroupNorm(num_channels=oup_channels, num_groups=gn_groups)
         self.alpha = nn.Parameter(torch.ones(1) * 0.5)
         self.gate_treshold = nn.Parameter(torch.tensor(gate_treshold))
-        self.sigomid = nn.Sigmoid()
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         gn_x = self.gn(x)
         w_gamma = self.gn.weight / (self.gn.weight.sum() + 1e-6)
         w_gamma = w_gamma.view(1, -1, 1, 1)
-        reweigts = self.sigomid(gn_x * w_gamma)
+        reweigts = self.sigmoid(gn_x * w_gamma)
         w1 = torch.where(reweigts > self.gate_treshold, torch.ones_like(reweigts), reweigts)
         w2 = torch.where(reweigts > self.gate_treshold, torch.zeros_like(reweigts), reweigts)
         x_1, x_2 = w1 * x, w2 * x
@@ -47,8 +47,8 @@ class SSU(nn.Module):
         return torch.cat([x_11 * self.alpha + x_22 * (1 - self.alpha), 
                           x_12 * (1 - self.alpha) + x_21 * self.alpha], dim=1)
 
-# --- 核心组件 CBE (原 CRU) ---
-class CBE(nn.Module):
+# --- 核心组件 CMU ---
+class CMU(nn.Module):
     def __init__(self, op_channel: int, alpha: float = 0.5, squeeze_radio: int = 2):
         super().__init__()
         self.up_channel = int(alpha * op_channel)
@@ -74,62 +74,49 @@ class CBE(nn.Module):
         out = F.softmax(pool_out, dim=1) * out
         return self.final_conv(out)
 
-# --- 整合模块 BSU ---
-class BSU(nn.Module):
+# --- 整合模块 SCMB ---
+class SCMB(nn.Module):
     def __init__(self, op_channel: int, group_num: int = 4, gate_treshold: float = 0.5, alpha: float = 0.5):
         super().__init__()
-        self.SSU = SSU(op_channel, group_num=group_num, gate_treshold=gate_treshold)
-        self.CBE = CBE(op_channel, alpha=alpha)
+        self.SMU = SMU(op_channel, group_num=group_num, gate_treshold=gate_treshold)
+        self.CMU = CMU(op_channel, alpha=alpha)
 
     def forward(self, x):
-        return self.CBE(self.SSU(x))
+        return self.CMU(self.SMU(x))
 
 # --- YOLO 集成模块 ---
-class Bottleneck_BSC(nn.Module):
+class Bottleneck_SCMB(nn.Module):
     def __init__(self, c1, c2, shortcut=True, g=1, k=(3, 3), e=0.5):
         super().__init__()
         c_ = int(c2 * e)
         self.cv1 = Conv(c1, c_, k[0], 1)
-        self.cv2 = BSU(c_)
-        self.cv3 = Conv(c_, c2, k[1], 1, g=g) # 补全通道还原，确保 shortcut 正常工作
+        self.cv2 = SCMB(c_)
+        self.cv3 = Conv(c_, c2, k[1], 1, g=g)
         self.add = shortcut and c1 == c2
 
     def forward(self, x):
         return x + self.cv3(self.cv2(self.cv1(x))) if self.add else self.cv3(self.cv2(self.cv1(x)))
 
-class Bottleneck(nn.Module):
-    def __init__(self, c1, c2, shortcut=True, g=1, k=(3, 3), e=0.5):
-        super().__init__()
-        c_ = int(c2 * e)
-        self.cv1 = Conv(c1, c_, k[0], 1)
-        self.cv2 = Conv(c_, c2, k[1], 1, g=g)
-        self.add = shortcut and c1 == c2
-
-    def forward(self, x):
-        return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
-
-class C3k_BSC(nn.Module): # 修正：重写 C3k，避免继承带来的命名混乱
+class C3k_SCMB(nn.Module):
     def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5, k=3):
         super().__init__()
         c_ = int(c2 * e)
         self.cv1 = Conv(c1, c_, 1, 1)
         self.cv2 = Conv(c1, c_, 1, 1)
         self.cv3 = Conv(2 * c_, c2, 1)
-        # 修正：调用 Bottleneck_BSC 而不是已不存在的 Bottleneck_ScConv
-        self.m = nn.Sequential(*(Bottleneck_BSC(c_, c_, shortcut, g, k=(k, k), e=1.0) for _ in range(n)))
+        self.m = nn.Sequential(*(Bottleneck_SCMB(c_, c_, shortcut, g, k=(k, k), e=1.0) for _ in range(n)))
 
     def forward(self, x):
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
 
-class C3k2_BSC(nn.Module):
+class C3k2_SCMB(nn.Module):
     def __init__(self, c1, c2, n=1, c3k=False, e=0.5, g=1, shortcut=True):
         super().__init__()
         self.c = int(c2 * e)
         self.cv1 = Conv(c1, 2 * self.c, 1, 1)
         self.cv2 = Conv((2 + n) * self.c, c2, 1)
-        # 核心引用：确保逻辑闭环
         self.m = nn.ModuleList(
-            C3k_BSC(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck_BSC(self.c, self.c, shortcut, g) 
+            C3k_SCMB(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck_SCMB(self.c, self.c, shortcut, g) 
             for _ in range(n)
         )
 
@@ -137,11 +124,3 @@ class C3k2_BSC(nn.Module):
         y = list(self.cv1(x).chunk(2, 1))
         y.extend(m(y[-1]) for m in self.m)
         return self.cv2(torch.cat(y, 1))
-
-if __name__ == "__main__":
-    image = torch.rand(1, 64, 240, 240)
-    model = C3k2_BSC(64, 64, n=1, c3k=True)
-    out = model(image)
-    print(f"--- BSU Module Ready ---")
-    print(f"Input shape: {image.shape}")
-    print(f"Output shape: {out.size()}")
