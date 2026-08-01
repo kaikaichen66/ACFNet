@@ -38,8 +38,12 @@ class SMU(nn.Module):
         w_gamma = self.gn.weight / (self.gn.weight.sum() + 1e-6)
         w_gamma = w_gamma.view(1, -1, 1, 1)
         reweigts = self.sigmoid(gn_x * w_gamma)
-        w1 = torch.where(reweigts > self.gate_treshold, torch.ones_like(reweigts), reweigts)
-        w2 = torch.where(reweigts > self.gate_treshold, torch.zeros_like(reweigts), reweigts)
+        w1 = torch.where(
+          reweights >= self.gate_threshold,
+          torch.ones_like(reweights),
+          torch.zeros_like(reweights)
+          )
+        w2 = 1 - w1
         x_1, x_2 = w1 * x, w2 * x
         c_half = x_1.size(1) // 2
         x_11, x_12 = x_1[:, :c_half], x_1[:, c_half:]
