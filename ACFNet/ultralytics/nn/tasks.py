@@ -966,7 +966,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
         if m in { Classify,Conv,ConvTranspose,GhostConv,Bottleneck,GhostBottleneck,SPP,SPPF,C2fPSA,C2PSA,DWConv,
             Focus,BottleneckCSP,C1,C2,C2f,C3k2,RepNCSPELAN4,ELAN1,ADown,AConv,SPPELAN,C2fAttn,C3,C3TR,C3Ghost,nn.ConvTranspose2d,DWConvTranspose2d,
             C3x,RepC3,PSA,SCDown,C2fCIB,C2f_CMEA,C3k2_CMEA,C2f_DPSA,C3k2_DPSA,C2f_GCAM,C3k2_GCAM,C2f_GLFA,C3k2_GLFA,
-            C2f_HLFAE, C3k2_HLFAE,C2f_MKDA,C3k2_MKDA, C2f_MSEA,C3k2_MSEA,C2f_SCSPA,C3k2_SCSPA,C2f_DynamicConv,DynamicConv,CSPPC,CSPHet,C2f_Dual,Down_wt,C3k2_ScConv,ScConv,VoVGSCSPC,VoVGSCSP,GSConv,C3k2_SAConv,SAConv2d,C3k2_DBB_neck,C3k2_DBB_backbone,DiverseBranchBlock,C3k2_FasterBlock,CSPStage,BSU,C3k2_BSC,C3k2_MLLABlock1,C3k2_MLLABlock2,C3k2_SRU,C3k2_CRU
+            C2f_HLFAE, C3k2_HLFAE,C2f_MKDA,C3k2_MKDA, C2f_MSEA,C3k2_MSEA,C2f_SCSPA,C3k2_SCSPA,C2f_DynamicConv,DynamicConv,CSPPC,CSPHet,C2f_Dual,Down_wt,C3k2_SCMB,SCMB
         }:
             c1, c2 = ch[f], args[0]
             if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
@@ -980,8 +980,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             args = [c1, c2, *args[1:]]
             if m in {BottleneckCSP,C1,C2,C2f,C3k2,C2fAttn,C3,C3TR,C3Ghost,C3x,RepC3,C2fPSA,C2fCIB,C2PSA,C2f_CMEA,C3k2_CMEA,
                      C2f_DPSA,C3k2_DPSA,C2f_GCAM,C3k2_GCAM,C2f_GLFA,C3k2_GLFA,C2f_HLFAE,C3k2_HLFAE,C2f_MKDA,C3k2_MKDA,
-                     C2f_MSEA,C3k2_MSEA,C2f_SCSPA,C3k2_SCSPA,C2f_DynamicConv,CSPPC,CSPHet,C2f_Dual,C3k2_ScConv,ScConv,VoVGSCSPC,VoVGSCSP,C3k2_SAConv,C3k2_DBB_neck,C3k2_DBB_backbone,C3k2_FasterBlock,CSPStage,BSU,C3k2_BSC,C3k2_MLLABlock1,C3k2_MLLABlock2,C3k2_SRU,C3k2_CRU
-
+                     C2f_MSEA,C3k2_MSEA,C2f_SCSPA,C3k2_SCSPA,C2f_DynamicConv,CSPPC,CSPHet,C2f_Dual,C3k2_SCMB,SCMB
             }:
                 args.insert(2, n)  # number of repeats
                 n = 1
@@ -1001,13 +1000,10 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
                 args.insert(4, n)  # number of repeats
                 n = 1
          #-------------------
-        elif m in (CMEA,DPSA,GCAM,GLFA,HLFAE,MKDA,MSEA,SCSPA):
+        elif m in (SCE):
             c2 = ch[f]
             args = [c2, *args]
-        elif m in {MEFA}:
-            c2 = ch[f[1]]
-            args = [c2, *args]
-
+    
         elif m in {MSAGF}:
             c2 = ch[f[0]]
             args = [ch[f[0]], ch[f[1]]]
