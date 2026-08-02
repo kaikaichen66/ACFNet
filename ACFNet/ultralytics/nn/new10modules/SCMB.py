@@ -33,9 +33,7 @@ class SMU(nn.Module):
 
     def forward(self, x):
         gn_x = self.gn(x)
-        w_gamma = self.gn.weight / (self.gn.weight.sum() + 1e-6)
-        w_gamma = w_gamma.view(1, -1, 1, 1)
-        reweigts = self.sigmoid(gn_x * w_gamma)
+        reweights = self.sigmoid(gn_x)
         w1 = torch.where(
           reweights >= self.gate_threshold,
           torch.ones_like(reweights),
