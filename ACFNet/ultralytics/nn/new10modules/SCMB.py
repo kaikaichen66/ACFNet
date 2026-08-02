@@ -23,12 +23,12 @@ class Conv(nn.Module):
         return self.act(self.bn(self.conv(x)))
 
 class SMU(nn.Module):
-    def __init__(self, oup_channels: int, group_num: int = 16, gate_treshold: float = 0.5):
+    def __init__(self, oup_channels: int, group_num: int = 16, gate_threshold: float = 0.5):
         super().__init__()
         gn_groups = group_num if oup_channels % group_num == 0 else 1
         self.gn = nn.GroupNorm(num_channels=oup_channels, num_groups=gn_groups)
         self.alpha = nn.Parameter(torch.ones(1) * 0.5)
-        self.gate_treshold = gate_treshold
+        self.gate_threshold = gate_threshold
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
