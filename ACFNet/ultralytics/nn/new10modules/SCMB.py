@@ -4,7 +4,6 @@ import torch.nn as nn
 
 __all__ = ['SCMB', 'C3k2_SCMB']
 
-# --- 基础工具 ---
 def autopad(k, p=None, d=1):
     if d > 1:
         k = d * (k - 1) + 1 if isinstance(k, int) else [d * (x - 1) + 1 for x in k]
@@ -23,7 +22,6 @@ class Conv(nn.Module):
     def forward(self, x):
         return self.act(self.bn(self.conv(x)))
 
-# --- 核心组件 SMU ---
 class SMU(nn.Module):
     def __init__(self, oup_channels: int, group_num: int = 16, gate_treshold: float = 0.5):
         super().__init__()
@@ -51,7 +49,6 @@ class SMU(nn.Module):
         return torch.cat([x_11 * self.alpha + x_22 * (1 - self.alpha), 
                           x_12 * (1 - self.alpha) + x_21 * self.alpha], dim=1)
 
-# --- 核心组件 CMU ---
 class CMU(nn.Module):
     def __init__(self, op_channel: int, alpha: float = 0.5, squeeze_radio: int = 2):
         super().__init__()
@@ -78,7 +75,6 @@ class CMU(nn.Module):
         out = F.softmax(pool_out, dim=1) * out
         return self.final_conv(out)
 
-# --- 整合模块 SCMB ---
 class SCMB(nn.Module):
     def __init__(self, op_channel: int, group_num: int = 4, gate_treshold: float = 0.5, alpha: float = 0.5):
         super().__init__()
@@ -88,7 +84,6 @@ class SCMB(nn.Module):
     def forward(self, x):
         return self.CMU(self.SMU(x))
 
-# --- YOLO 集成模块 ---
 class Bottleneck_SCMB(nn.Module):
     def __init__(self, c1, c2, shortcut=True, g=1, k=(3, 3), e=0.5):
         super().__init__()
