@@ -28,7 +28,7 @@ class SMU(nn.Module):
         gn_groups = group_num if oup_channels % group_num == 0 else 1
         self.gn = nn.GroupNorm(num_channels=oup_channels, num_groups=gn_groups)
         self.alpha = nn.Parameter(torch.ones(1) * 0.5)
-        self.gate_treshold = nn.Parameter(torch.tensor(gate_treshold))
+        self.gate_treshold = gate_treshold
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
