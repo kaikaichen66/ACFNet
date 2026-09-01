@@ -1,9 +1,9 @@
 
-path: /home/chenkaikai/PythonProjects/YOLOv8v10v11_Demov10/datasets/PV-Multi-Defect-YOLO/  # 注意这里是你的数据集根目录
+path: datasets/PV-Multi-Defect
 
-train: images/train  # 训练集图片路径，相对path
-val: images/val      # 验证集图片路径，相对path
-test: images/test    # 测试集图片路径，相对path
+train: images/train # 
+val: images/val     #
+test: images/test   #
 
 names:
   0: broken
