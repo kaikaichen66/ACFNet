@@ -3,7 +3,7 @@ torchvision==0.22.1
 ultralytics==8.3.57
 numpy==1.26.4
 opencv-python==4.8.0.76
-PyYAML==6.0.2
+PyYAML==6.0.3
 scipy==1.13.1
 matplotlib==3.9.4
 pillow==11.2.1
