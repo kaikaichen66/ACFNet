@@ -1,0 +1,15 @@
+path: datasets/PVEL-AD
+
+train: train
+val: valid
+test: test
+
+nc: 7
+names:
+  0: black_core
+  1: crack
+  2: finger
+  3: horizontal_dislocation
+  4: short_circuit
+  5: star_crack
+  6: thick_line

@@ -1,0 +1,13 @@
+path: datasets/PV-Multi-Defect-YOLO
+
+train: images/train
+val: images/val
+test: images/test
+
+nc: 5
+names:
+  0: broken
+  1: hot_spot
+  2: black_border
+  3: scratch
+  4: no_electricity

@@ -1,0 +1,122 @@
+import torch
+import torch.nn.functional as F
+import torch.nn as nn
+
+__all__ = ['SCMB', 'C3k2_SCMB']
+
+def autopad(k, p=None, d=1):
+    if d > 1:
+        k = d * (k - 1) + 1 if isinstance(k, int) else [d * (x - 1) + 1 for x in k]
+    if p is None:
+        p = k // 2 if isinstance(k, int) else [x // 2 for x in k]
+    return p
+
+class Conv(nn.Module):
+    default_act = nn.SiLU()
+    def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True):
+        super().__init__()
+        self.conv = nn.Conv2d(c1, c2, k, s, autopad(k, p, d), groups=g, dilation=d, bias=False)
+        self.bn = nn.BatchNorm2d(c2)
+        self.act = self.default_act if act is True else act if isinstance(act, nn.Module) else nn.Identity()
+
+    def forward(self, x):
+        return self.act(self.bn(self.conv(x)))
+
+class SMU(nn.Module):
+    def __init__(self, oup_channels: int, group_num: int = 16, gate_threshold: float = 0.5):
+        super().__init__()
+        gn_groups = group_num if oup_channels % group_num == 0 else 1
+        self.gn = nn.GroupNorm(num_channels=oup_channels, num_groups=gn_groups)
+        self.gate_threshold = gate_threshold
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        gn_x = self.gn(x)
+        reweights = self.sigmoid(gn_x)
+        w1 = torch.where(
+          reweights >= self.gate_threshold,
+          torch.ones_like(reweights),
+          torch.zeros_like(reweights)
+          )
+        w2 = 1 - w1
+        x_1, x_2 = w1 * x, w2 * x
+        y = self.reconstruct(x_1, x_2)
+        return y
+
+    def reconstruct(self, x_1, x_2):
+        x_11, x_12 = torch.split(x_1, x_1.size(1) // 2, dim=1)
+        x_21, x_22 = torch.split(x_2, x_2.size(1) // 2, dim=1)
+        return torch.cat([x_11 + x_22, x_12 + x_21],dim=1)
+
+class CMU(nn.Module):
+    def __init__(self, op_channel: int, alpha: float = 0.5, squeeze_radio: int = 2):
+        super().__init__()
+        self.up_channel = int(alpha * op_channel)
+        self.low_channel = op_channel - self.up_channel
+        up_squeezed = max(1, self.up_channel // squeeze_radio)
+        low_squeezed = max(1, self.low_channel // squeeze_radio)
+        self.squeeze1 = nn.Conv2d(self.up_channel, up_squeezed, kernel_size=1, bias=False)
+        self.squeeze2 = nn.Conv2d(self.low_channel, low_squeezed, kernel_size=1, bias=False)
+        self.GWC = nn.Conv2d(up_squeezed, op_channel, kernel_size=3, padding=1, groups=2)
+        self.PWC1 = nn.Conv2d(up_squeezed, op_channel, kernel_size=1, bias=False)
+        self.PWC2 = nn.Conv2d(low_squeezed, op_channel - low_squeezed, kernel_size=1, bias=False)
+        self.advavg = nn.AdaptiveAvgPool2d(1)
+
+    def forward(self, x):
+        up, low = torch.split(x, [self.up_channel, self.low_channel], dim=1)
+        up, low = self.squeeze1(up), self.squeeze2(low)
+        Y1 = self.GWC(up) + self.PWC1(up)
+        Y2 = torch.cat([self.PWC2(low), low], dim=1)
+        out = torch.cat([Y1, Y2], dim=1)
+        out = F.softmax(self.advavg(out), dim=1) * out
+        out1, out2 = torch.split(out, out.size(1) // 2, dim=1)
+        return out1 + out2
+
+class SCMB(nn.Module):
+    def __init__(self, op_channel: int, group_num: int = 4, gate_threshold: float = 0.5, alpha: float = 0.5):
+        super().__init__()
+        self.SMU = SMU(op_channel, group_num=group_num, gate_threshold=gate_threshold)
+        self.CMU = CMU(op_channel, alpha=alpha)
+
+    def forward(self, x):
+        return self.CMU(self.SMU(x))
+
+class Bottleneck_SCMB(nn.Module):
+    def __init__(self, c1, c2, shortcut=True, g=1, k=(3, 3), e=0.5):
+        super().__init__()
+        c_ = int(c2 * e)
+        self.cv1 = Conv(c1, c_, k[0], 1)
+        self.cv2 = SCMB(c_)
+        self.cv3 = Conv(c_, c2, k[1], 1, g=g)
+        self.add = shortcut and c1 == c2
+
+    def forward(self, x):
+        return x + self.cv3(self.cv2(self.cv1(x))) if self.add else self.cv3(self.cv2(self.cv1(x)))
+
+class C3k_SCMB(nn.Module):
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5, k=3):
+        super().__init__()
+        c_ = int(c2 * e)
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = Conv(c1, c_, 1, 1)
+        self.cv3 = Conv(2 * c_, c2, 1)
+        self.m = nn.Sequential(*(Bottleneck_SCMB(c_, c_, shortcut, g, k=(k, k), e=1.0) for _ in range(n)))
+
+    def forward(self, x):
+        return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
+
+class C3k2_SCMB(nn.Module):
+    def __init__(self, c1, c2, n=1, c3k=False, e=0.5, g=1, shortcut=True):
+        super().__init__()
+        self.c = int(c2 * e)
+        self.cv1 = Conv(c1, 2 * self.c, 1, 1)
+        self.cv2 = Conv((2 + n) * self.c, c2, 1)
+        self.m = nn.ModuleList(
+            C3k_SCMB(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck_SCMB(self.c, self.c, shortcut, g) 
+            for _ in range(n)
+        )
+
+    def forward(self, x):
+        y = list(self.cv1(x).chunk(2, 1))
+        y.extend(m(y[-1]) for m in self.m)
+        return self.cv2(torch.cat(y, 1))
