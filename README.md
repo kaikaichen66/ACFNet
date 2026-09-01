@@ -320,41 +320,12 @@ configs/
 
 ## 10. Data Availability
 
-The datasets used in this study are publicly available from their original repositories:
+The datasets used in this study are not redistributed in this repository. Users should obtain the PVEL-AD and PV-Multi-Defect datasets from their respective original sources and follow their applicable licenses and terms of use.
 
-**PVEL-AD**
-
-https://github.com/binyisu/PVEL-AD
-
-**PV-Multi-Defect**
-
-https://github.com/CCNUZFW/PV-Multi-Defect
-
-The ACFNet source code, model configurations, dataset configurations, pretrained weights, and reproduction instructions are available at:
-
-https://github.com/kaikaichen66/ACFNet
-
-The exact repository commit corresponding to the manuscript is:
-
-```text
-COMMIT_HASH
-```
-
-The repository provides executable training and validation scripts:
-
-```bash
-python train.py
-python valid.py
-```
-
-The original datasets are not redistributed in this repository. Users should obtain them from the respective original sources and follow their applicable licenses and terms of use.
+The ACFNet source code, model configurations, dataset configurations, pretrained weights, and reproduction scripts are provided in this repository.
 
 ## 11. License
 
-This repository is released under the license specified in:
+This repository is released under the MIT License. See the `LICENSE` file for details.
 
-```text
-LICENSE
-```
-
-The datasets used in this study are third-party public datasets. Please refer to their original repositories for the corresponding dataset licenses and terms of use.
+The datasets used in this study are third-party public datasets. Please refer to their original sources for the corresponding dataset licenses and terms of use.
