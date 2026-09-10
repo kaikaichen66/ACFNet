@@ -1,6 +1,6 @@
 # ACFNet
 
-**ACFNet: Asymmetric Cross-layer Fusion Network with Semantic Consistency Enhancement for Photovoltaic Defect Detection**
+**ACFNet: Asymmetric Cross-layer Fusion Network with Semantic Context Enhancement for Photovoltaic Defect Detection**
 
 This repository provides the implementation of ACFNet, including the model configurations, dataset configurations, training and validation scripts, and pretrained weights used in the study.
 
@@ -24,6 +24,7 @@ ACFNet/
 │
 ├── weights/
 │   └── ACFNet_PV-Multi-Defect.pt
+│   └── ACFNet_PVEL-AD.pt
 │
 ├── train.py
 ├── valid.py
