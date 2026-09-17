@@ -1000,7 +1000,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
                 args.insert(4, n)  # number of repeats
                 n = 1
          #-------------------
-        elif m in (SCE):
+        elif m is SCE:
             c2 = ch[f]
             args = [c2, *args]
     
