@@ -56,7 +56,7 @@ pip install -r requirements.txt
 
 ## 3. Datasets
 
-This study uses two publicly available photovoltaic electroluminescence (EL) image datasets: PVEL-AD and PV-Multi-Defect. The original datasets are not redistributed in this repository and should be obtained from their respective original sources.
+This study uses two publicly available photovoltaic defect image datasets: PVEL-AD and PV-Multi-Defect. The original datasets are not redistributed in this repository and should be obtained from their respective original sources.
 
 The dataset configuration files are provided in:
 
